@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowUp, Bookmark, Copy, Pin, ThumbsDown, ThumbsUp } from "lucide-react";
+import { ArrowUp, Bookmark, Copy, MoreHorizontal, Pin, Settings2, ThumbsDown, ThumbsUp } from "lucide-react";
 import { useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -110,9 +110,11 @@ function MessageBubble({ message }: { message: ChatMessage }) {
 export function ChatPanel({
   notebookName,
   sourceCount,
+  onOpenConfig,
 }: {
   notebookName: string;
   sourceCount: number;
+  onOpenConfig?: () => void;
 }) {
   const messages = useChatStore((s) => s.messages);
   const isStreaming = useChatStore((s) => s.isStreaming);
@@ -129,6 +131,16 @@ export function ChatPanel({
       {/* Header */}
       <div className="flex items-center justify-between border-b px-6 py-3">
         <h2 className="text-sm font-semibold">Chat</h2>
+        <div className="flex items-center gap-1">
+          {onOpenConfig && (
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onOpenConfig}>
+              <Settings2 className="h-4 w-4" />
+            </Button>
+          )}
+          <Button variant="ghost" size="icon" className="h-7 w-7">
+            <MoreHorizontal className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
       {/* Messages */}
