@@ -108,10 +108,12 @@ function MessageBubble({ message }: { message: ChatMessage }) {
 }
 
 export function ChatPanel({
+  notebookId = "demo",
   notebookName,
   sourceCount,
   onOpenConfig,
 }: {
+  notebookId?: string;
   notebookName: string;
   sourceCount: number;
   onOpenConfig?: () => void;
@@ -120,10 +122,75 @@ export function ChatPanel({
   const isStreaming = useChatStore((s) => s.isStreaming);
   const [input, setInput] = useState("");
 
-  const handleSend = () => {
+  // Import the chat hook dynamically to avoid SSR issues
+  const handleSend = async () => {
     if (!input.trim() || isStreaming) return;
-    // TODO: Send to API
+    const query = input;
     setInput("");
+
+    // Use the real API if backend is running, otherwise show demo
+    try {
+      const { useChat } = await import("@/hooks/use-chat");
+      // For now, trigger via the API client directly
+      const { askQuestion } = await import("@/lib/api");
+      const { useChatStore } = await import("@/stores/chat");
+      const store = useChatStore.getState();
+
+      store.setStreaming(true);
+
+      // Add user message
+      store.addMessage({
+        id: crypto.randomUUID(),
+        role: "user",
+        content: query,
+        savedAsNote: false,
+        createdAt: new Date(),
+      });
+
+      // Add empty assistant message
+      const assistantId = crypto.randomUUID();
+      store.addMessage({
+        id: assistantId,
+        role: "assistant",
+        content: "",
+        savedAsNote: false,
+        createdAt: new Date(),
+      });
+
+      let fullContent = "";
+      for await (const event of askQuestion(notebookId, query)) {
+        if (event.type === "text" && event.content) {
+          fullContent += event.content;
+          store.updateMessage(assistantId, { content: fullContent });
+        } else if (event.type === "citations" && event.citations) {
+          const citations = Object.values(event.citations).map((c) => ({
+            sourceId: c.sourceId,
+            sourceFilename: c.sourceFilename,
+            text: c.text,
+          }));
+          store.updateMessage(assistantId, { citations });
+        }
+      }
+      store.setStreaming(false);
+    } catch {
+      // Backend not available - show error
+      const { useChatStore } = await import("@/stores/chat");
+      const store = useChatStore.getState();
+      store.addMessage({
+        id: crypto.randomUUID(),
+        role: "user",
+        content: query,
+        savedAsNote: false,
+        createdAt: new Date(),
+      });
+      store.addMessage({
+        id: crypto.randomUUID(),
+        role: "assistant",
+        content: "Backend não disponível. Inicie o servidor FastAPI na porta 8000.",
+        savedAsNote: false,
+        createdAt: new Date(),
+      });
+    }
   };
 
   return (
