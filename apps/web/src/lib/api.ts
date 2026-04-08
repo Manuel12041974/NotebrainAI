@@ -5,6 +5,10 @@
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
 
+/** WebSocket URL for Live Assistant (Gemini Live / Ollama) */
+export const WS_LIVE_URL =
+  process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8000/api/live";
+
 /* ─── Sources ─── */
 
 export async function uploadSource(notebookId: string, file: File) {
