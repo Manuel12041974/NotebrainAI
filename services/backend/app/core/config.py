@@ -31,6 +31,11 @@ class Settings(BaseSettings):
     gemini_api_key: str = ""
     gemini_model: str = "gemini-2.5-flash"
 
+    # Live Assistant — Multimodal real-time
+    gemini_live_model: str = "gemini-3.1-flash-live-preview"
+    ollama_url: str = "http://localhost:11434"
+    ollama_live_model: str = "llama3.2:3b"
+
     # TTS
     fish_audio_api_key: str = ""
     elevenlabs_api_key: str = ""
