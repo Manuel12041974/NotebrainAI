@@ -47,3 +47,7 @@ coverage/
 # Build
 *.tsbuildinfo
 services/backend/.env
+
+# Data / uploads (runtime)
+services/backend/data/
+services/backend/uploads/

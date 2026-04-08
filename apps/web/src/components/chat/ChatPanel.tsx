@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowUp, Bookmark, Copy, Pin, ThumbsDown, ThumbsUp } from "lucide-react";
+import { ArrowUp, Bookmark, Copy, MoreHorizontal, Pin, Settings2, ThumbsDown, ThumbsUp } from "lucide-react";
 import { useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -26,10 +26,8 @@ function CitationBadge({
 }) {
   return (
     <Tooltip>
-      <TooltipTrigger asChild>
-        <button className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary hover:bg-primary/20 transition-colors mx-0.5">
+      <TooltipTrigger className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary hover:bg-primary/20 transition-colors mx-0.5">
           {index}
-        </button>
       </TooltipTrigger>
       <TooltipContent side="top" className="max-w-sm">
         <p className="text-xs font-medium mb-1">{sourceFilename}</p>
@@ -69,34 +67,26 @@ function MessageBubble({ message }: { message: ChatMessage }) {
         {!isUser && (
           <div className="mt-2 flex items-center gap-1">
             <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-7 w-7">
-                  <Pin className="h-3.5 w-3.5" />
-                </Button>
+              <TooltipTrigger className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors">
+                <Pin className="h-3.5 w-3.5" />
               </TooltipTrigger>
               <TooltipContent>Guardar na nota</TooltipContent>
             </Tooltip>
             <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-7 w-7">
-                  <Copy className="h-3.5 w-3.5" />
-                </Button>
+              <TooltipTrigger className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors">
+                <Copy className="h-3.5 w-3.5" />
               </TooltipTrigger>
               <TooltipContent>Copiar</TooltipContent>
             </Tooltip>
             <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-7 w-7">
-                  <ThumbsUp className="h-3.5 w-3.5" />
-                </Button>
+              <TooltipTrigger className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors">
+                <ThumbsUp className="h-3.5 w-3.5" />
               </TooltipTrigger>
               <TooltipContent>Boa resposta</TooltipContent>
             </Tooltip>
             <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-7 w-7">
-                  <ThumbsDown className="h-3.5 w-3.5" />
-                </Button>
+              <TooltipTrigger className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors">
+                <ThumbsDown className="h-3.5 w-3.5" />
               </TooltipTrigger>
               <TooltipContent>Má resposta</TooltipContent>
             </Tooltip>
@@ -108,20 +98,89 @@ function MessageBubble({ message }: { message: ChatMessage }) {
 }
 
 export function ChatPanel({
+  notebookId = "demo",
   notebookName,
   sourceCount,
+  onOpenConfig,
 }: {
+  notebookId?: string;
   notebookName: string;
   sourceCount: number;
+  onOpenConfig?: () => void;
 }) {
   const messages = useChatStore((s) => s.messages);
   const isStreaming = useChatStore((s) => s.isStreaming);
   const [input, setInput] = useState("");
 
-  const handleSend = () => {
+  // Import the chat hook dynamically to avoid SSR issues
+  const handleSend = async () => {
     if (!input.trim() || isStreaming) return;
-    // TODO: Send to API
+    const query = input;
     setInput("");
+
+    // Use the real API if backend is running, otherwise show demo
+    try {
+      const { useChat } = await import("@/hooks/use-chat");
+      // For now, trigger via the API client directly
+      const { askQuestion } = await import("@/lib/api");
+      const { useChatStore } = await import("@/stores/chat");
+      const store = useChatStore.getState();
+
+      store.setStreaming(true);
+
+      // Add user message
+      store.addMessage({
+        id: crypto.randomUUID(),
+        role: "user",
+        content: query,
+        savedAsNote: false,
+        createdAt: new Date(),
+      });
+
+      // Add empty assistant message
+      const assistantId = crypto.randomUUID();
+      store.addMessage({
+        id: assistantId,
+        role: "assistant",
+        content: "",
+        savedAsNote: false,
+        createdAt: new Date(),
+      });
+
+      let fullContent = "";
+      for await (const event of askQuestion(notebookId, query)) {
+        if (event.type === "text" && event.content) {
+          fullContent += event.content;
+          store.updateMessage(assistantId, { content: fullContent });
+        } else if (event.type === "citations" && event.citations) {
+          const citations = Object.values(event.citations).map((c) => ({
+            sourceId: c.sourceId,
+            sourceFilename: c.sourceFilename,
+            text: c.text,
+          }));
+          store.updateMessage(assistantId, { citations });
+        }
+      }
+      store.setStreaming(false);
+    } catch {
+      // Backend not available - show error
+      const { useChatStore } = await import("@/stores/chat");
+      const store = useChatStore.getState();
+      store.addMessage({
+        id: crypto.randomUUID(),
+        role: "user",
+        content: query,
+        savedAsNote: false,
+        createdAt: new Date(),
+      });
+      store.addMessage({
+        id: crypto.randomUUID(),
+        role: "assistant",
+        content: "Backend não disponível. Inicie o servidor FastAPI na porta 8000.",
+        savedAsNote: false,
+        createdAt: new Date(),
+      });
+    }
   };
 
   return (
@@ -129,6 +188,16 @@ export function ChatPanel({
       {/* Header */}
       <div className="flex items-center justify-between border-b px-6 py-3">
         <h2 className="text-sm font-semibold">Chat</h2>
+        <div className="flex items-center gap-1">
+          {onOpenConfig && (
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onOpenConfig}>
+              <Settings2 className="h-4 w-4" />
+            </Button>
+          )}
+          <Button variant="ghost" size="icon" className="h-7 w-7">
+            <MoreHorizontal className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
       {/* Messages */}

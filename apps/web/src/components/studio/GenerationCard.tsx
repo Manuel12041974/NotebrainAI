@@ -2,14 +2,19 @@
 
 import { motion } from "framer-motion";
 import {
+  Download,
   FileText,
   Headphones,
   Image,
   Loader2,
   Monitor,
+  MoreVertical,
   Network,
+  Pencil,
   Presentation,
+  Share2,
   Table,
+  Trash2,
   Trophy,
   Video,
   X,
@@ -17,6 +22,13 @@ import {
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Progress } from "@/components/ui/progress";
 import type { GenerationJob, GenerationType } from "@/stores/generation";
 
@@ -141,13 +153,26 @@ export function GenerationCard({ job, onCancel, onDownload }: GenerationCardProp
             </Button>
           )}
           {isCompleted && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-            >
-              <span className="text-xs">⋮</span>
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger className="flex h-6 w-6 items-center justify-center rounded-md opacity-0 group-hover:opacity-100 transition-opacity hover:bg-muted cursor-pointer">
+                  <MoreVertical className="h-3.5 w-3.5" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-40">
+                <DropdownMenuItem className="gap-2 text-xs">
+                  <Pencil className="h-3.5 w-3.5" /> Mudar o nome
+                </DropdownMenuItem>
+                <DropdownMenuItem className="gap-2 text-xs">
+                  <Download className="h-3.5 w-3.5" /> Transferir
+                </DropdownMenuItem>
+                <DropdownMenuItem className="gap-2 text-xs">
+                  <Share2 className="h-3.5 w-3.5" /> Partilhar
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem className="gap-2 text-xs text-destructive focus:text-destructive">
+                  <Trash2 className="h-3.5 w-3.5" /> Eliminar
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
         </div>
       </div>

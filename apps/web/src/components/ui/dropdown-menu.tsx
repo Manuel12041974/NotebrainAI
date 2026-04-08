@@ -14,8 +14,22 @@ function DropdownMenuPortal({ ...props }: MenuPrimitive.Portal.Props) {
   return <MenuPrimitive.Portal data-slot="dropdown-menu-portal" {...props} />
 }
 
-function DropdownMenuTrigger({ ...props }: MenuPrimitive.Trigger.Props) {
-  return <MenuPrimitive.Trigger data-slot="dropdown-menu-trigger" {...props} />
+function DropdownMenuTrigger({
+  className,
+  children,
+  ...props
+}: MenuPrimitive.Trigger.Props & { className?: string }) {
+  // Filter out asChild from props — it's a Radix concept not supported by Base UI
+  const { asChild, ...cleanProps } = props as Record<string, unknown>;
+  return (
+    <MenuPrimitive.Trigger
+      data-slot="dropdown-menu-trigger"
+      className={className}
+      {...cleanProps}
+    >
+      {children}
+    </MenuPrimitive.Trigger>
+  )
 }
 
 function DropdownMenuContent({

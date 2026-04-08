@@ -1,9 +1,15 @@
 "use client";
 
-import { useEffect } from "react";
+import { Settings2, Share2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Group, Panel, Separator as PanelResizeHandle } from "react-resizable-panels";
 
+import { ChatConfigDialog } from "@/components/chat/ChatConfigDialog";
 import { ChatPanel } from "@/components/chat/ChatPanel";
+import { EditableTitle } from "@/components/layout/EditableTitle";
+import { ShareDialog } from "@/components/layout/ShareDialog";
 import { SourcePanel } from "@/components/sources/SourcePanel";
+import { UploadDialog } from "@/components/sources/UploadDialog";
 import { LiveAssistant } from "@/components/studio/LiveAssistant";
 import { StudioPanel } from "@/components/studio/StudioPanel";
 import { useGenerationStore } from "@/stores/generation";
@@ -16,58 +22,43 @@ function useDemoData() {
   const addJob = useGenerationStore((s) => s.addJob);
 
   useEffect(() => {
-    // Demo sources
     setSources([
-      { id: "1", type: "pdf", filename: "501467939_Proj8090_Dezembro_2025.pdf", status: "ready", selected: true },
-      { id: "2", type: "pdf", filename: "Adiantamento Test Bed.pdf", status: "ready", selected: true },
-      { id: "3", type: "pdf", filename: "Anexo-condicionantes-8090.pdf", status: "ready", selected: true },
-      { id: "4", type: "pdf", filename: "Análise candidatura 8090 Test Bed.pdf", status: "ready", selected: true },
-      { id: "5", type: "pdf", filename: "Decisao Final Test Bed.pdf", status: "ready", selected: true },
-      { id: "6", type: "pdf", filename: "Estrutura-do-template-de-Declaracao.pdf", status: "ready", selected: true },
-      { id: "7", type: "pdf", filename: "FAQs_TestBeds_V06.pdf", status: "ready", selected: true },
+      { id: "1", type: "pdf", filename: "Relatório do Deep Research: Regime ...", status: "ready", selected: true, summary: "Relatório gerado pelo Deep Research sobre o regime de penalizações por não assinar o termo de aceitação do projeto Test Bed. Inclui análise de 2 fontes web." },
+      { id: "2", type: "pdf", filename: "501467939_Proj8090_Dezembro_2025.pdf", status: "ready", selected: true, summary: "Relatório de progresso do projeto 8090 referente a Dezembro 2025. A iniciativa atingiu 45% de execução, contando com 27 projetos-piloto focados em proteger a propriedade intelectual de pequenas empresas." },
+      { id: "3", type: "pdf", filename: "Adiantamento Test Bed.pdf", status: "ready", selected: true, summary: "Pedido de adiantamento para o projeto Test Bed DevSecPaaS. Documenta o processo de solicitação de fundos antecipados." },
+      { id: "4", type: "pdf", filename: "Anexo-condicionantes-8090.pdf", status: "ready", selected: true, summary: "Este documento estabelece as condições obrigatórias que a empresa EXPANDINDUSTRIA e os seus parceiros devem cumprir para viabilizar o financiamento do projeto tecnológico DevSecPaaS." },
+      { id: "5", type: "pdf", filename: "Análise candidatura 8090 Test Bed.pdf", status: "ready", selected: true, summary: "Análise detalhada da candidatura ao projeto 8090 Test Bed, incluindo critérios de avaliação, pontuação e recomendações." },
+      { id: "6", type: "pdf", filename: "Decisao Final Test Bed.pdf", status: "ready", selected: true, summary: "Decisão final sobre a candidatura ao Test Bed, incluindo aprovação e condições específicas do financiamento." },
+      { id: "7", type: "pdf", filename: "Estrutura-do-template-de-Declaracao.pdf", status: "ready", selected: true, summary: "Template oficial para a declaração de despesas e progresso do projeto, com instruções de preenchimento." },
+      { id: "8", type: "pdf", filename: "FAQs_TestBeds_V06.pdf", status: "ready", selected: true, summary: "Perguntas frequentes sobre os Test Beds, versão 6. Cobre elegibilidade, prazos, relatórios e obrigações dos beneficiários." },
     ]);
 
-    // Demo: active generation jobs with progress
     addJob({
-      id: "gen-1",
+      id: "gen-audio-1",
       type: "audio",
-      status: "processing",
-      progress: 52,
-      currentStep: 2,
-      totalSteps: 4,
-      stepDescription: "Gerando script do podcast",
-      estimatedTimeRemaining: "3 min",
-      sourceCount: 19,
-      createdAt: new Date(),
-    });
-    addJob({
-      id: "gen-2",
-      type: "slides",
-      status: "processing",
-      progress: 87,
+      status: "completed",
+      progress: 100,
       currentStep: 4,
-      totalSteps: 5,
-      stepDescription: "Renderizando slides",
-      estimatedTimeRemaining: "30s",
+      totalSteps: 4,
+      stepDescription: "Completo",
       sourceCount: 19,
-      createdAt: new Date(),
+      createdAt: new Date(Date.now() - 3 * 60 * 60 * 1000),
+      completedAt: new Date(Date.now() - 3 * 60 * 60 * 1000),
     });
     addJob({
-      id: "gen-3",
-      type: "video",
-      status: "processing",
-      progress: 12,
-      currentStep: 1,
-      totalSteps: 6,
-      stepDescription: "Analisando fontes",
-      estimatedTimeRemaining: "8 min",
+      id: "gen-audio-2",
+      type: "audio",
+      status: "completed",
+      progress: 100,
+      currentStep: 4,
+      totalSteps: 4,
+      stepDescription: "Completo",
       sourceCount: 19,
-      createdAt: new Date(),
+      createdAt: new Date(Date.now() - 3 * 60 * 60 * 1000),
+      completedAt: new Date(Date.now() - 3 * 60 * 60 * 1000),
     });
-
-    // Demo: completed generations
     addJob({
-      id: "gen-4",
+      id: "gen-report-1",
       type: "report",
       status: "completed",
       progress: 100,
@@ -75,32 +66,24 @@ function useDemoData() {
       totalSteps: 3,
       stepDescription: "Completo",
       sourceCount: 19,
-      createdAt: new Date(Date.now() - 6 * 60 * 1000),
-      completedAt: new Date(Date.now() - 6 * 60 * 1000),
+      createdAt: new Date(Date.now() - 3 * 60 * 60 * 1000),
+      completedAt: new Date(Date.now() - 3 * 60 * 60 * 1000),
     });
 
-    // Demo: Deep Research in progress
-    setResearchJob({
-      id: "research-1",
-      query: "penalizações por não assinar no novo termo de aceitação do projeto test bed",
-      mode: "deep",
-      status: "searching",
-      currentStep: 2,
-      totalSteps: 5,
-      steps: [
-        { name: "Planear investigação", status: "completed" },
-        { name: "Pesquisar fontes web", status: "active" },
-        { name: "Analisar resultados", status: "pending" },
-        { name: "Cruzar com fontes locais", status: "pending" },
-        { name: "Gerar relatório", status: "pending" },
-      ],
-    });
+    setResearchJob(null); // No research in progress for this demo
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 }
 
 export default function NotebookWorkspace() {
   useDemoData();
+
+  const [notebookName, setNotebookName] = useState("DevSecPaaS Test Bed Project 8090");
+  const [shareOpen, setShareOpen] = useState(false);
+  const [chatConfigOpen, setChatConfigOpen] = useState(false);
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const addSource = useSourcesStore((s) => s.addSource);
+  const sources = useSourcesStore((s) => s.sources);
 
   return (
     <div className="flex h-screen flex-col bg-background">
@@ -110,9 +93,11 @@ export default function NotebookWorkspace() {
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10">
             <span className="text-sm font-bold text-primary">N</span>
           </div>
-          <h1 className="text-sm font-semibold">
-            DevSecPaaS Test Bed Project 8090
-          </h1>
+          <EditableTitle
+            value={notebookName}
+            onChange={setNotebookName}
+            className="text-sm font-semibold"
+          />
         </div>
         <div className="flex items-center gap-2">
           <button className="rounded-full bg-primary px-4 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors">
@@ -121,36 +106,76 @@ export default function NotebookWorkspace() {
           <button className="rounded-md px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted/50 transition-colors">
             Estatísticas
           </button>
-          <button className="rounded-md px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted/50 transition-colors">
-            Partilhar
+          <button
+            onClick={() => setShareOpen(true)}
+            className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted/50 transition-colors"
+          >
+            <Share2 className="h-3.5 w-3.5" /> Partilhar
           </button>
-          <LiveAssistant notebookId="1" sourceCount={19} />
+          <LiveAssistant notebookId="1" sourceCount={sources.length} />
           <button className="rounded-md px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted/50 transition-colors">
             Definições
           </button>
         </div>
       </header>
 
-      {/* Main 3-panel workspace */}
-      <div className="flex flex-1 overflow-hidden">
+      {/* Main 3-panel workspace with resizable panels */}
+      <Group
+        orientation="horizontal"
+        defaultLayout={[18, 52, 30]}
+        className="flex-1"
+      >
         {/* Left: Sources Panel */}
-        <aside className="w-[280px] shrink-0 border-r overflow-hidden">
-          <SourcePanel />
-        </aside>
+        <Panel min={12} max={35} className="overflow-hidden">
+          <SourcePanel onAddSources={() => setUploadOpen(true)} />
+        </Panel>
+
+        <PanelResizeHandle className="w-1 bg-transparent hover:bg-primary/20 active:bg-primary/40 transition-colors" />
 
         {/* Center: Chat Panel */}
-        <main className="flex-1 overflow-hidden">
+        <Panel min={30} className="overflow-hidden">
           <ChatPanel
-            notebookName="DevSecPaaS Test Bed Project 8090"
-            sourceCount={19}
+            notebookName={notebookName}
+            sourceCount={sources.length}
+            onOpenConfig={() => setChatConfigOpen(true)}
           />
-        </main>
+        </Panel>
+
+        <PanelResizeHandle className="w-1 bg-transparent hover:bg-primary/20 active:bg-primary/40 transition-colors" />
 
         {/* Right: Studio Panel */}
-        <aside className="w-[300px] shrink-0 border-l overflow-hidden">
+        <Panel min={15} max={40} className="overflow-hidden">
           <StudioPanel />
-        </aside>
-      </div>
+        </Panel>
+      </Group>
+
+      {/* Dialogs */}
+      <UploadDialog
+        open={uploadOpen}
+        onOpenChange={setUploadOpen}
+        notebookId="notebook-1"
+        onUploaded={(src) => {
+          addSource({
+            id: src.id,
+            type: "pdf",
+            filename: src.filename,
+            status: src.status === "ready" ? "ready" : "error",
+            selected: true,
+            summary: src.summary,
+          });
+        }}
+      />
+      <ShareDialog
+        open={shareOpen}
+        onOpenChange={setShareOpen}
+        notebookName={notebookName}
+        ownerName="Manuel Oliveira"
+        ownerEmail="manuellaurindooliveira@gmail.com"
+      />
+      <ChatConfigDialog
+        open={chatConfigOpen}
+        onOpenChange={setChatConfigOpen}
+      />
     </div>
   );
 }
