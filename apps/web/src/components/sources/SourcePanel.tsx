@@ -256,7 +256,7 @@ function DeepResearchProgress({ job }: { job: ResearchJob }) {
 
 /* ─── Source Panel ─── */
 
-export function SourcePanel() {
+export function SourcePanel({ onAddSources }: { onAddSources?: () => void } = {}) {
   const sources = useSourcesStore((s) => s.sources);
   const selectAll = useSourcesStore((s) => s.selectAll);
   const toggleSelectAll = useSourcesStore((s) => s.toggleSelectAll);
@@ -291,7 +291,7 @@ export function SourcePanel() {
 
       {/* Add sources */}
       <div className="px-3 pt-3">
-        <Button variant="outline" className="w-full justify-center gap-2" size="sm">
+        <Button variant="outline" className="w-full justify-center gap-2" size="sm" onClick={onAddSources}>
           <Plus className="h-4 w-4" />
           Adicionar fontes
         </Button>

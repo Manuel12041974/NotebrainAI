@@ -9,6 +9,7 @@ import { ChatPanel } from "@/components/chat/ChatPanel";
 import { EditableTitle } from "@/components/layout/EditableTitle";
 import { ShareDialog } from "@/components/layout/ShareDialog";
 import { SourcePanel } from "@/components/sources/SourcePanel";
+import { UploadDialog } from "@/components/sources/UploadDialog";
 import { LiveAssistant } from "@/components/studio/LiveAssistant";
 import { StudioPanel } from "@/components/studio/StudioPanel";
 import { useGenerationStore } from "@/stores/generation";
@@ -80,6 +81,9 @@ export default function NotebookWorkspace() {
   const [notebookName, setNotebookName] = useState("DevSecPaaS Test Bed Project 8090");
   const [shareOpen, setShareOpen] = useState(false);
   const [chatConfigOpen, setChatConfigOpen] = useState(false);
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const addSource = useSourcesStore((s) => s.addSource);
+  const sources = useSourcesStore((s) => s.sources);
 
   return (
     <div className="flex h-screen flex-col bg-background">
@@ -108,7 +112,7 @@ export default function NotebookWorkspace() {
           >
             <Share2 className="h-3.5 w-3.5" /> Partilhar
           </button>
-          <LiveAssistant notebookId="1" sourceCount={22} />
+          <LiveAssistant notebookId="1" sourceCount={sources.length} />
           <button className="rounded-md px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted/50 transition-colors">
             Definições
           </button>
@@ -123,7 +127,7 @@ export default function NotebookWorkspace() {
       >
         {/* Left: Sources Panel */}
         <Panel min={12} max={35} className="overflow-hidden">
-          <SourcePanel />
+          <SourcePanel onAddSources={() => setUploadOpen(true)} />
         </Panel>
 
         <PanelResizeHandle className="w-1 bg-transparent hover:bg-primary/20 active:bg-primary/40 transition-colors" />
@@ -132,7 +136,7 @@ export default function NotebookWorkspace() {
         <Panel min={30} className="overflow-hidden">
           <ChatPanel
             notebookName={notebookName}
-            sourceCount={22}
+            sourceCount={sources.length}
             onOpenConfig={() => setChatConfigOpen(true)}
           />
         </Panel>
@@ -146,6 +150,21 @@ export default function NotebookWorkspace() {
       </Group>
 
       {/* Dialogs */}
+      <UploadDialog
+        open={uploadOpen}
+        onOpenChange={setUploadOpen}
+        notebookId="notebook-1"
+        onUploaded={(src) => {
+          addSource({
+            id: src.id,
+            type: "pdf",
+            filename: src.filename,
+            status: src.status === "ready" ? "ready" : "error",
+            selected: true,
+            summary: src.summary,
+          });
+        }}
+      />
       <ShareDialog
         open={shareOpen}
         onOpenChange={setShareOpen}

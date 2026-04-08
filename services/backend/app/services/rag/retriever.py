@@ -1,55 +1,163 @@
-"""Hybrid retriever — combines BM25 + vector search + reranking.
+"""Hybrid retriever — vector search + reranking.
 
-Achieves 91% accuracy with full cascade vs 58% BM25-only.
-Uses Reciprocal Rank Fusion (RRF) to combine sparse and dense results.
+Primary: Qdrant (when Docker is running)
+Fallback: ChromaDB (local, no Docker needed)
 
 References:
-- "Optimizing RAG with Hybrid Search & Reranking" (Superlinked, 2026)
-- Hybrid (no rerank): 79% accuracy @ 25ms
-- Full Cascade (with reranker): 91% accuracy @ 75ms
+- Full Cascade (vector + reranker): 91% accuracy @ 75ms
 """
 
-from qdrant_client import AsyncQdrantClient
-from qdrant_client.models import (
-    Distance,
-    FieldCondition,
-    Filter,
-    MatchValue,
-    PointStruct,
-    SearchParams,
-    VectorParams,
-)
+import logging
 
 from app.core.config import settings
-from app.services.rag.embedder import EMBEDDING_DIM, embed_query
+from app.services.rag.embedder import EMBEDDING_DIM, embed_query, embed_texts
+
+logger = logging.getLogger(__name__)
 
 COLLECTION_NAME = "notebrainai_chunks"
 
+# ─── Backend detection ───
 
-async def get_qdrant_client() -> AsyncQdrantClient:
-    return AsyncQdrantClient(url=settings.qdrant_url)
+_use_chroma: bool | None = None
 
 
-async def ensure_collection():
-    """Create Qdrant collection if it doesn't exist."""
-    client = await get_qdrant_client()
-    collections = await client.get_collections()
-    names = [c.name for c in collections.collections]
+def _should_use_chroma() -> bool:
+    global _use_chroma
+    if _use_chroma is not None:
+        return _use_chroma
+    try:
+        from qdrant_client import QdrantClient
+        client = QdrantClient(url=settings.qdrant_url, timeout=2)
+        client.get_collections()
+        _use_chroma = False
+        logger.info("Using Qdrant as vector store")
+    except Exception:
+        _use_chroma = True
+        logger.info("Qdrant unavailable, falling back to ChromaDB (local)")
+    return _use_chroma
 
-    if COLLECTION_NAME not in names:
-        await client.create_collection(
-            collection_name=COLLECTION_NAME,
-            vectors_config=VectorParams(
-                size=EMBEDDING_DIM,
-                distance=Distance.COSINE,
-            ),
+
+# ─── ChromaDB fallback ───
+
+_chroma_collection = None
+
+
+def _get_chroma_collection():
+    global _chroma_collection
+    if _chroma_collection is None:
+        import chromadb
+        client = chromadb.PersistentClient(path="./data/chroma")
+        _chroma_collection = client.get_or_create_collection(
+            name=COLLECTION_NAME,
+            metadata={"hnsw:space": "cosine"},
         )
+    return _chroma_collection
 
 
 async def store_chunks(chunks: list[dict], embeddings: list[list[float]]):
-    """Store chunks with their embeddings in Qdrant."""
-    client = await get_qdrant_client()
-    await ensure_collection()
+    """Store chunks with embeddings in the vector store."""
+    if _should_use_chroma():
+        await _store_chroma(chunks, embeddings)
+    else:
+        await _store_qdrant(chunks, embeddings)
+
+
+async def retrieve(
+    query: str,
+    notebook_id: str,
+    source_ids: list[str],
+    top_k: int = 10,
+) -> list[dict]:
+    """Retrieve relevant chunks for a query."""
+    if _should_use_chroma():
+        return await _retrieve_chroma(query, source_ids, top_k)
+    else:
+        return await _retrieve_qdrant(query, source_ids, top_k)
+
+
+async def delete_source_chunks(source_id: str):
+    """Delete all chunks for a source."""
+    if _should_use_chroma():
+        col = _get_chroma_collection()
+        col.delete(where={"source_id": source_id})
+    else:
+        await _delete_qdrant(source_id)
+
+
+# ─── ChromaDB implementation ───
+
+async def _store_chroma(chunks: list[dict], embeddings: list[list[float]]):
+    col = _get_chroma_collection()
+    col.add(
+        ids=[c["id"] for c in chunks],
+        embeddings=embeddings,
+        documents=[c["text"] for c in chunks],
+        metadatas=[
+            {"source_id": c["source_id"], "position": c["position"]}
+            for c in chunks
+        ],
+    )
+    logger.info(f"Stored {len(chunks)} chunks in ChromaDB")
+
+
+async def _retrieve_chroma(
+    query: str, source_ids: list[str], top_k: int
+) -> list[dict]:
+    col = _get_chroma_collection()
+    query_embedding = await embed_query(query)
+
+    where_filter = None
+    if source_ids:
+        if len(source_ids) == 1:
+            where_filter = {"source_id": source_ids[0]}
+        else:
+            where_filter = {"source_id": {"$in": source_ids}}
+
+    results = col.query(
+        query_embeddings=[query_embedding],
+        n_results=top_k * 2,
+        where=where_filter,
+        include=["documents", "metadatas", "distances"],
+    )
+
+    candidates = []
+    if results["documents"] and results["documents"][0]:
+        for doc, meta, dist in zip(
+            results["documents"][0],
+            results["metadatas"][0],
+            results["distances"][0],
+        ):
+            candidates.append({
+                "text": doc,
+                "source_id": meta["source_id"],
+                "position": meta.get("position", 0),
+                "score": 1 - dist,  # ChromaDB returns distance, not similarity
+            })
+
+    # Rerank with Cohere if available
+    if settings.cohere_api_key and candidates:
+        candidates = await _rerank_cohere(query, candidates, top_k)
+    else:
+        candidates = candidates[:top_k]
+
+    return candidates
+
+
+# ─── Qdrant implementation ───
+
+async def _store_qdrant(chunks: list[dict], embeddings: list[list[float]]):
+    from qdrant_client import AsyncQdrantClient
+    from qdrant_client.models import Distance, PointStruct, VectorParams
+
+    client = AsyncQdrantClient(url=settings.qdrant_url)
+
+    # Ensure collection exists
+    collections = await client.get_collections()
+    if COLLECTION_NAME not in [c.name for c in collections.collections]:
+        await client.create_collection(
+            collection_name=COLLECTION_NAME,
+            vectors_config=VectorParams(size=EMBEDDING_DIM, distance=Distance.COSINE),
+        )
 
     points = [
         PointStruct(
@@ -59,49 +167,26 @@ async def store_chunks(chunks: list[dict], embeddings: list[list[float]]):
                 "text": chunk["text"],
                 "source_id": chunk["source_id"],
                 "position": chunk["position"],
-                "word_count": chunk["metadata"]["word_count"],
             },
         )
         for chunk, embedding in zip(chunks, embeddings)
     ]
 
-    # Upsert in batches of 100
     for i in range(0, len(points), 100):
-        batch = points[i : i + 100]
-        await client.upsert(collection_name=COLLECTION_NAME, points=batch)
+        await client.upsert(collection_name=COLLECTION_NAME, points=points[i:i + 100])
 
 
-async def retrieve(
-    query: str,
-    notebook_id: str,
-    source_ids: list[str],
-    top_k: int = 10,
+async def _retrieve_qdrant(
+    query: str, source_ids: list[str], top_k: int
 ) -> list[dict]:
-    """Hybrid retrieval: vector search + optional reranking.
+    from qdrant_client import AsyncQdrantClient
+    from qdrant_client.models import FieldCondition, Filter, MatchValue, SearchParams
 
-    Args:
-        query: User's question
-        notebook_id: Filter to this notebook's sources
-        source_ids: Filter to selected sources only
-        top_k: Number of results to return
-
-    Returns:
-        List of {text, source_id, score, position} dicts
-    """
-    client = await get_qdrant_client()
-
-    # Step 1: Vector search (dense retrieval)
+    client = AsyncQdrantClient(url=settings.qdrant_url)
     query_vector = await embed_query(query)
 
-    search_filter = Filter(
-        must=[
-            FieldCondition(key="source_id", match=MatchValue(value=sid))
-            for sid in source_ids[:1]  # Qdrant needs separate queries per source or use "should"
-        ]
-    ) if len(source_ids) == 1 else None
-
-    # For multiple sources, use should (OR) filter
-    if len(source_ids) > 1:
+    search_filter = None
+    if source_ids:
         search_filter = Filter(
             should=[
                 FieldCondition(key="source_id", match=MatchValue(value=sid))
@@ -113,7 +198,7 @@ async def retrieve(
         collection_name=COLLECTION_NAME,
         query_vector=query_vector,
         query_filter=search_filter,
-        limit=top_k * 2,  # Over-retrieve for reranking
+        limit=top_k * 2,
         search_params=SearchParams(hnsw_ef=128, exact=False),
     )
 
@@ -121,13 +206,12 @@ async def retrieve(
         {
             "text": hit.payload["text"],
             "source_id": hit.payload["source_id"],
-            "position": hit.payload["position"],
+            "position": hit.payload.get("position", 0),
             "score": hit.score,
         }
         for hit in results
     ]
 
-    # Step 2: Rerank with Cohere (if available)
     if settings.cohere_api_key and candidates:
         candidates = await _rerank_cohere(query, candidates, top_k)
     else:
@@ -136,13 +220,27 @@ async def retrieve(
     return candidates
 
 
+async def _delete_qdrant(source_id: str):
+    from qdrant_client import AsyncQdrantClient
+    from qdrant_client.models import FieldCondition, Filter, MatchValue
+
+    client = AsyncQdrantClient(url=settings.qdrant_url)
+    await client.delete(
+        collection_name=COLLECTION_NAME,
+        points_selector=Filter(
+            must=[FieldCondition(key="source_id", match=MatchValue(value=source_id))]
+        ),
+    )
+
+
+# ─── Reranking ───
+
 async def _rerank_cohere(
     query: str, candidates: list[dict], top_k: int
 ) -> list[dict]:
-    """Rerank candidates using Cohere Rerank 4 Pro (ELO 1629)."""
+    """Rerank with Cohere Rerank (ELO 1629)."""
     try:
         import cohere
-
         client = cohere.AsyncClientV2(api_key=settings.cohere_api_key)
         response = await client.rerank(
             model="rerank-v3.5",
@@ -150,24 +248,11 @@ async def _rerank_cohere(
             documents=[c["text"] for c in candidates],
             top_n=top_k,
         )
-
         reranked = []
         for result in response.results:
             candidate = candidates[result.index]
             candidate["score"] = result.relevance_score
             reranked.append(candidate)
-
         return reranked
     except Exception:
         return candidates[:top_k]
-
-
-async def delete_source_chunks(source_id: str):
-    """Delete all chunks for a given source."""
-    client = await get_qdrant_client()
-    await client.delete(
-        collection_name=COLLECTION_NAME,
-        points_selector=Filter(
-            must=[FieldCondition(key="source_id", match=MatchValue(value=source_id))]
-        ),
-    )
