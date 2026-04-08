@@ -110,13 +110,13 @@ function SortableSourceCard({ source }: { source: Source }) {
         }`}
       >
         {/* Drag handle */}
-        <button
+        <div
           {...attributes}
           {...listeners}
           className="shrink-0 cursor-grab opacity-0 group-hover:opacity-60 hover:opacity-100 transition-opacity touch-none"
         >
           <GripVertical className="h-4 w-4 text-muted-foreground" />
-        </button>
+        </div>
 
         {/* Icon */}
         <Icon className="h-4 w-4 shrink-0 text-red-500" />
@@ -135,20 +135,21 @@ function SortableSourceCard({ source }: { source: Source }) {
             className="min-w-0 flex-1 bg-transparent border border-primary/30 rounded px-1 text-sm outline-none focus:border-primary"
           />
         ) : (
-          <button
+          <div
+            role="button"
+            tabIndex={0}
             onClick={() => setExpandedSource(source.id)}
-            className="min-w-0 flex-1 truncate text-left"
+            onKeyDown={(e) => { if (e.key === "Enter") setExpandedSource(source.id); }}
+            className="min-w-0 flex-1 truncate text-left cursor-pointer"
           >
             {source.filename || source.url || "Texto sem título"}
-          </button>
+          </div>
         )}
 
         {/* Context menu */}
         <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button className="shrink-0 rounded p-0.5 opacity-0 group-hover:opacity-60 hover:opacity-100 transition-opacity">
+          <DropdownMenuTrigger className="shrink-0 rounded p-0.5 opacity-0 group-hover:opacity-60 hover:opacity-100 transition-opacity cursor-pointer">
               <ChevronDown className="h-3.5 w-3.5" />
-            </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-48">
             <DropdownMenuItem onClick={handleRename} className="gap-2">
@@ -168,24 +169,27 @@ function SortableSourceCard({ source }: { source: Source }) {
         {source.status === "processing" ? (
           <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-muted-foreground" />
         ) : (
-          <button onClick={() => toggleSource(source.id)} className="shrink-0">
-            <div
-              className={`h-4 w-4 rounded-sm border transition-colors ${
-                source.selected
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-muted-foreground/30"
-              }`}
-            >
-              {source.selected && (
-                <svg viewBox="0 0 16 16" className="h-4 w-4">
-                  <path
-                    d="M12.207 4.793a1 1 0 0 1 0 1.414l-5 5a1 1 0 0 1-1.414 0l-2-2a1 1 0 0 1 1.414-1.414L6.5 9.086l4.293-4.293a1 1 0 0 1 1.414 0z"
-                    fill="currentColor"
-                  />
-                </svg>
-              )}
-            </div>
-          </button>
+          <div
+            role="checkbox"
+            aria-checked={source.selected}
+            tabIndex={0}
+            onClick={() => toggleSource(source.id)}
+            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") toggleSource(source.id); }}
+            className={`shrink-0 h-4 w-4 rounded-sm border transition-colors cursor-pointer ${
+              source.selected
+                ? "border-primary bg-primary text-primary-foreground"
+                : "border-muted-foreground/30"
+            }`}
+          >
+            {source.selected && (
+              <svg viewBox="0 0 16 16" className="h-4 w-4">
+                <path
+                  d="M12.207 4.793a1 1 0 0 1 0 1.414l-5 5a1 1 0 0 1-1.414 0l-2-2a1 1 0 0 1 1.414-1.414L6.5 9.086l4.293-4.293a1 1 0 0 1 1.414 0z"
+                  fill="currentColor"
+                />
+              </svg>
+            )}
+          </div>
         )}
       </div>
 
