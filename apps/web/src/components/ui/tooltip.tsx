@@ -21,8 +21,18 @@ function Tooltip({ ...props }: TooltipPrimitive.Root.Props) {
   return <TooltipPrimitive.Root data-slot="tooltip" {...props} />
 }
 
-function TooltipTrigger({ ...props }: TooltipPrimitive.Trigger.Props) {
-  return <TooltipPrimitive.Trigger data-slot="tooltip-trigger" {...props} />
+function TooltipTrigger({
+  className,
+  // Filter out asChild — it's a Radix concept, Base UI uses render prop instead
+  ...props
+}: TooltipPrimitive.Trigger.Props & { className?: string }) {
+  return (
+    <TooltipPrimitive.Trigger
+      data-slot="tooltip-trigger"
+      className={className}
+      {...props}
+    />
+  )
 }
 
 function TooltipContent({

@@ -26,10 +26,8 @@ function CitationBadge({
 }) {
   return (
     <Tooltip>
-      <TooltipTrigger asChild>
-        <button className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary hover:bg-primary/20 transition-colors mx-0.5">
+      <TooltipTrigger className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary hover:bg-primary/20 transition-colors mx-0.5">
           {index}
-        </button>
       </TooltipTrigger>
       <TooltipContent side="top" className="max-w-sm">
         <p className="text-xs font-medium mb-1">{sourceFilename}</p>
@@ -69,34 +67,26 @@ function MessageBubble({ message }: { message: ChatMessage }) {
         {!isUser && (
           <div className="mt-2 flex items-center gap-1">
             <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-7 w-7">
-                  <Pin className="h-3.5 w-3.5" />
-                </Button>
+              <TooltipTrigger className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors">
+                <Pin className="h-3.5 w-3.5" />
               </TooltipTrigger>
               <TooltipContent>Guardar na nota</TooltipContent>
             </Tooltip>
             <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-7 w-7">
-                  <Copy className="h-3.5 w-3.5" />
-                </Button>
+              <TooltipTrigger className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors">
+                <Copy className="h-3.5 w-3.5" />
               </TooltipTrigger>
               <TooltipContent>Copiar</TooltipContent>
             </Tooltip>
             <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-7 w-7">
-                  <ThumbsUp className="h-3.5 w-3.5" />
-                </Button>
+              <TooltipTrigger className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors">
+                <ThumbsUp className="h-3.5 w-3.5" />
               </TooltipTrigger>
               <TooltipContent>Boa resposta</TooltipContent>
             </Tooltip>
             <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-7 w-7">
-                  <ThumbsDown className="h-3.5 w-3.5" />
-                </Button>
+              <TooltipTrigger className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors">
+                <ThumbsDown className="h-3.5 w-3.5" />
               </TooltipTrigger>
               <TooltipContent>Má resposta</TooltipContent>
             </Tooltip>

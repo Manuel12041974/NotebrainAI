@@ -2,7 +2,6 @@
 
 import { Download, MoreVertical, Pencil, Share2, Trash2 } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,14 +27,8 @@ export function StudioItemMenu({
 }: StudioItemMenuProps) {
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
-        >
-          <MoreVertical className="h-4 w-4" />
-        </Button>
+      <DropdownMenuTrigger className="inline-flex h-7 w-7 items-center justify-center rounded-md opacity-0 group-hover:opacity-100 transition-opacity hover:bg-muted cursor-pointer">
+        <MoreVertical className="h-4 w-4" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-44">
         <DropdownMenuItem onClick={() => onRename?.(itemId)} className="gap-2">

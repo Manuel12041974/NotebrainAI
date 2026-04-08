@@ -19,11 +19,13 @@ function DropdownMenuTrigger({
   children,
   ...props
 }: MenuPrimitive.Trigger.Props & { className?: string }) {
+  // Filter out asChild from props — it's a Radix concept not supported by Base UI
+  const { asChild, ...cleanProps } = props as Record<string, unknown>;
   return (
     <MenuPrimitive.Trigger
       data-slot="dropdown-menu-trigger"
       className={className}
-      {...props}
+      {...cleanProps}
     >
       {children}
     </MenuPrimitive.Trigger>
